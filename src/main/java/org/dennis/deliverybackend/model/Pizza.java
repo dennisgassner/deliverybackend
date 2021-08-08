@@ -11,7 +11,7 @@ public class Pizza {
     private String title;
     private String description;
     private double price;
-    private byte[] image;
+    private String image;
 
     public int getId() {
         return id;
@@ -55,11 +55,10 @@ public class Pizza {
     }
 
     public String getImage() {
-        return new String();
-        //TODO: Base64 Kodierung des Images
+        return image;
     }
 
-    public Pizza setImage(byte[] image) {
+    public Pizza setImage(String image) {
         this.image = image;
         return this;
     }

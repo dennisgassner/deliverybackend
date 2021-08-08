@@ -21,11 +21,9 @@ public class PizzaRepository {
     private String mongodbUri;
 
     public List<Pizza> getAll() {
-        if(items.size()<=0) {
+        if (items.size() <= 0) {
             MongoOperations mongoOps = new MongoTemplate(MongoClients.create(mongodbUri), "admin");
-            for (Pizza p : mongoOps.findAll(Pizza.class, "pizzas")) {
-                items.add(p);
-            }
+            mongoOps.findAll(Pizza.class, "pizzas").stream().forEach(pizza -> items.add(pizza));
         }
         return items;
     }
