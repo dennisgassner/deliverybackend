@@ -2,6 +2,7 @@ package org.dennis.deliverybackend;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.InstanceOfAssertFactories.atomicMarkableReference;
+import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -9,9 +10,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.dennis.deliverybackend.controller.DeliveryController;
+import org.dennis.deliverybackend.model.PizzaListItem;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.data.mongo.AutoConfigureDataMongo;
+import org.springframework.boot.test.autoconfigure.data.mongo.DataMongoTest;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.dennis.deliverybackend.model.Pizza;
@@ -28,12 +33,16 @@ import java.util.List;
 
 @RunWith(SpringRunner.class)
 @AutoConfigureMockMvc
+@AutoConfigureDataMongo
 @SpringBootTest
 @ActiveProfiles("dev")
 class DeliverybackendApplicationTests {
 
 	@Autowired
 	MockMvc mvc;
+
+	@MockBean
+	PizzaRepository pizzaRepository;
 
 	@Test
 	void contextLoads() {
@@ -54,29 +63,29 @@ class DeliverybackendApplicationTests {
 	}
 
 	@Test
-	void testPizzaRespository() {
+	void testPizzaRepository() {
 		PizzaRepository repository = new PizzaRepository();
 		List<Pizza> testItems = new LinkedList<Pizza>();
 		testItems.add(new Pizza().setTitle("demo").setDescription("demo"));
 		Pizza p1 = new Pizza().setTitle("demo1");
 		testItems.add(p1);
 		ReflectionTestUtils.setField(repository,"items",testItems);
-		assertThat(repository.getAll().size()).isEqualTo(testItems.size());
-		assertThat(repository.getAll().contains(p1)).isTrue();
+		assertThat(repository.getList().size()).isEqualTo(testItems.size());
+		assertThat(repository.getList().contains(p1)).isTrue();
 	}
 
 	@Test
 	void testDeliveryControllerWeb() throws Exception {
-		List<Pizza> responseList;
-		MvcResult result = mvc.perform(get("/delivery/list_all")).andExpect(status().isOk()).andReturn();
-		responseList =  new ObjectMapper().readValue(result.getResponse().getContentAsString(), new TypeReference<List<Pizza>>() {});
+		given(this.pizzaRepository.getList()).willReturn(List.of(new Pizza(), new Pizza()));
+		List<PizzaListItem> responseList;
+		MvcResult result = mvc.perform(get("/delivery/pizza")).andExpect(status().isOk()).andReturn();
+		responseList =  new ObjectMapper().readValue(result.getResponse().getContentAsString(), new TypeReference<List<PizzaListItem>>() {});
 		assertThat(responseList.size()).isGreaterThan(0);
 	}
 
 	@Test
 	void testDeliveryController() throws Exception {
-		List<Pizza> responseList;
-		//demo repository
+		List<PizzaListItem> responseList;
 		PizzaRepository repository = new PizzaRepository();
 		List<Pizza> testItems = new LinkedList<Pizza>();
 		testItems.add(new Pizza().setTitle("demo").setDescription("demo").setPrice(1.23));
@@ -86,8 +95,16 @@ class DeliverybackendApplicationTests {
 		DeliveryController controller = new DeliveryController();
 		ReflectionTestUtils.setField(controller,"repository",repository);
 		responseList = controller.getAllPizzas();
-		assertThat(responseList.size()).isEqualTo(repository.getAll().size());
-		assertThat(responseList.contains(p1)).isTrue();
+		assertThat(responseList.size()).isEqualTo(repository.getList().size());
+	}
+
+	@Test
+	void testPizzaDetailsWeb() throws Exception {
+		given(this.pizzaRepository.getPizza(1)).willReturn(new Pizza().setId(1).setTitle("dummy"));
+		MvcResult result = mvc.perform(get("/delivery/pizza/1")).andExpect(status().isOk()).andReturn();
+		Pizza p =  new ObjectMapper().readValue(result.getResponse().getContentAsString(), new TypeReference<Pizza>() {});
+		assertThat(p.getId()).isEqualTo(1);
+		assertThat(p.getTitle()).isNotBlank();
 	}
 
 
